@@ -4,18 +4,19 @@ THE STRATEGY IS BASED ON THE ASSUMPTION THAT THE MARKET IS UNDERVALUED WHEN MVRV
 AND OVERVALUED WHEN MVRV >3.7
 """
 
-# REQUIRED MODULES
+# REQUIRED MODULES, IT´S THOUGHT TO USE STREAMLIT AS A VISUALIZATION TOOL 
 import data
 import datetime
 import indicators
 import pandas as pd
 import streamlit as st
 import time
-
+from secrets import SecretsAPIKey
 
 
 # CONSTANT VARIABLES REGARDING KEY INPUTS: INITIAL DATE, END DATE, MVRV_LOW AND MVRV HIGH
-API_KEY = API_KEY
+# INITIALIZED WITH THE FOLLOWING INPUTS, MANUALLY ADJUST AS NEEDED
+API_KEY = SecretsAPIKey
 FECHA_INICIO = datetime.datetime(2014, 1, 1)                         
 INICIO_UNIX = time.mktime(FECHA_INICIO.timetuple())
 FECHA_FINAL = '2021-03-03'
@@ -25,24 +26,36 @@ PARAMS = {
     'a': 'BTC',
     'api_key': API_KEY,
     's': int(INICIO_UNIX),
-    'u': 1615032383             ## OJO ACTUALIZAR FECHA FINAL
+    'u': 1615032383            
 }
 
-# DATA REGARDING THE STRATEGY IN THE SELECTED PERIOD, PASS INDICATOR AS A STRING
-# GET DATA FOR THE FIRST INDICATOR: PRICE USD CLOSE
-url = 'https://api.glassnode.com/v1/metrics/market/price_usd_close'
-dfprecios = data.Data(API_KEY, url, PARAMS, 'market-price')
-dfprecios = dfprecios.get_data()
 
-# GET DATA FOR THE SECOND INDICATOR: MVRV
-url_mvrv = 'https://api.glassnode.com/v1/metrics/market/mvrv'
-dfmvrv = data.Data(API_KEY, url_mvrv, PARAMS, 'mvrv')
-dfmvrv = dfmvrv.get_data()
+# FUNCTION THAT OBTAINS A CLEAN DF WITH THE RELEVANT INDICATORS IN ORDER TO PASS IT TO THE BRAIN OF THE
+# STRATEGY CLASS WHICH WILL PERFORM THE CALCULATIONS
 
-# CREATE AN UNIQUE DATAFRAME FOR THE STRATEGY ANALYSIS
-dffinal = data.Data.combine_frames(dfprecios, dfmvrv)
+def GetMainDF(API_KEY, PARAMS,
+			  url_indicator1 = 'https://api.glassnode.com/v1/metrics/market/price_usd_close',
+			  url_indicator2 = 	'https://api.glassnode.com/v1/metrics/market/mvrv'):
+	# DATA REGARDING THE STRATEGY IN THE SELECTED PERIOD, PASS INDICATOR AS A STRING
+	# GET DATA FOR THE FIRST INDICATOR: PRICE USD CLOSE
+	url = url_indicator1
+	dfprecios = data.Data(API_KEY, url, PARAMS, 'market-price')
+	dfprecios = dfprecios.get_data()
 
-# GETS RELEVANT TRADES ACCORDING TO STRATEGY'S LOGIC
+	# GET DATA FOR THE SECOND INDICATOR: MVRV
+	url_mvrv = url_indicator2
+	dfmvrv = data.Data(API_KEY, url_mvrv, PARAMS, 'mvrv')
+	dfmvrv = dfmvrv.get_data()
+
+	# CREATE AN UNIQUE DATAFRAME FOR THE STRATEGY ANALYSIS
+	dffinal = data.Data.combine_frames(dfprecios, dfmvrv)
+
+	return dffinal
+
+dffinal = GetMainDF(API_KEY, PARAMS)
+
+
+# CLASS THAT GETS RELEVANT TRADES ACCORDING TO STRATEGY'S LOGIC
 
 class Brain:
 
@@ -107,6 +120,7 @@ indicators = indicators.Indicators(dffinal, buy, sell, sellprices, buyprices, fe
 return_strategy = indicators.rentabilidad_estrategia()
 return_benchmark = indicators.rentabilidad_benchmark()
 graph_triggers = indicators.print_trigger()
+
 
 
 
